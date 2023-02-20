@@ -2,7 +2,7 @@
 # Based on /opt/optsync/FreeRTOS/FreeRTOS/Demo/Posix_GCC/Makefile
 
 CC := gcc
-BIN := modelo-posix-gcc
+BIN := task
 
 BUILD_DIR := build
 
