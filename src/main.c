@@ -10,16 +10,27 @@
 
 void vTask1(void *pvParameters)
 {
-    for (;;)
+    while(1)
     {
-        printf("Task 1\r\n");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        printf("This is task 1\n");
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+void vTask2(void *pvParameters)
+{
+    while (1)
+    {
+        printf("This is task 2\n");
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
 int main(void)
 {
-    xTaskCreate(&vTask1, "Task 1", 1024, NULL, 1, NULL);
+    xTaskCreate(&vTask1, "Task 1", 1000, NULL, 3, NULL);
+    xTaskCreate(&vTask2, "Task 2", 100, NULL, 1, NULL);
 
     vTaskStartScheduler();
 
