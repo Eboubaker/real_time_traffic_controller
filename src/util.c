@@ -3,6 +3,8 @@
 
 #include "util.h"
 #include "stdarg.h"
+#include <string.h>
+#include <stdio.h>
 
 bool rand_prob(float prob)
 {

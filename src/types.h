@@ -1,6 +1,9 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 #include "config.h"
 
 typedef struct
@@ -21,5 +24,18 @@ typedef struct
     int vr_lane_light; // vertical right lane light
     int vl_lane_light; // vertical left lane light
 
+    // light timers for each lane in ms.
+    int hb_lane_red_time;
+    int hb_lane_green_time;
+    int hb_lane_yellow_time;
+    int ht_lane_red_time;
+    int ht_lane_green_time;
+    int ht_lane_yellow_time;
+    int vl_lane_red_time;
+    int vl_lane_green_time;
+    int vl_lane_yellow_time;
+    int vr_lane_red_time;
+    int vr_lane_green_time;
+    int vr_lane_yellow_time;
 } RoadState_t;
 #endif // TYPES_H

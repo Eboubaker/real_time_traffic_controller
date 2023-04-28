@@ -3,3 +3,4 @@ build/
 src/FreeRTOS
 src/FreeRTOS-Plus
 .vscode/
+log

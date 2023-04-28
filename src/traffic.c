@@ -5,17 +5,42 @@
 #include "traffic.h"
 #include "string.h"
 #include "drawer.h"
+#include "config.h"
 
-void generate_traffic(float prob, RoadState_t *road_state)
+float htraffic = .25;
+float vtraffic = .25;
+
+
+float *get_htraffic() {
+    return &htraffic;
+}
+float *get_vtraffic()
 {
-    if (!road_state->ht_lane[0] && rand_prob(prob))
+    return &vtraffic;
+}
+
+void generate_traffic(RoadState_t *road_state)
+{
+    if (!road_state->ht_lane[0] && rand_prob(htraffic))
+    {
         road_state->ht_lane[0] = 1;
-    if (!road_state->hb_lane[0] && rand_prob(prob))
+        (*get_generated_traffic())++;
+    }
+    if (!road_state->hb_lane[0] && rand_prob(htraffic))
+    {
         road_state->hb_lane[0] = 1;
-    if (!road_state->vl_lane[0] && rand_prob(prob))
+        (*get_generated_traffic())++;
+    }
+    if (!road_state->vl_lane[0] && rand_prob(vtraffic))
+    {
         road_state->vl_lane[0] = 1;
-    if (!road_state->vr_lane[0] && rand_prob(prob))
+        (*get_generated_traffic())++;
+    }
+    if (!road_state->vr_lane[0] && rand_prob(vtraffic))
+    {
         road_state->vr_lane[0] = 1;
+        (*get_generated_traffic())++;
+    }
 }
 
 bool inside_junc_zone(int i, const char *lane)
@@ -80,12 +105,12 @@ void traffic_step(RoadState_t *road_state)
     {
         if (road_state->ht_lane[i])
         {
-            if (i != 14 && inside_junc_zone(i + 1, "ht")) // check next position
+            if (i != 14 && !inside_junc_zone(i, "ht") && inside_junc_zone(i + 1, "ht")) // check if we will step into junction in next step
             {
                 if (road_state->ht_lane_light == LIGHT_RED || road_state->ht_lane_light == LIGHT_YELLOW)
                     continue; // traffic controls does not allow this car to step into junction
             }
-            else if (i != 14)
+            if (i != 14)
             {
                 i2 = junc_zone_convert(i + 1, "ht", "vl");
                 if (i2 >= 0 && road_state->vl_lane[i2])    // check if next car position is empty
@@ -93,12 +118,110 @@ void traffic_step(RoadState_t *road_state)
                 i2 = junc_zone_convert(i + 1, "ht", "vr"); //
                 if (i2 >= 0 && road_state->vr_lane[i2])    // check if next car position is empty
                     continue;                              // prevent traffic collision
+                if (road_state->ht_lane[i + 1])            // check if next car position is empty
+                    continue;                              // prevent traffic collision
             }
 
             // car can safely move one step
             road_state->ht_lane[i] = 0; // clear old position
             if (i != 14)
                 road_state->ht_lane[i + 1] = 1; // set to next position
+            else
+                (*get_passed_traffic())++;
+            // draw_traffic_jump(road_state, i, "ht");
+        }
+    }
+
+    for (int i = 14; i >= 0; i--)
+    {
+        if (road_state->hb_lane[i])
+        {
+            if (i != 14 && !inside_junc_zone(i, "hb") && inside_junc_zone(i + 1, "hb")) // check if we will step into junction in next step
+            {
+                if (road_state->hb_lane_light == LIGHT_RED || road_state->hb_lane_light == LIGHT_YELLOW)
+                    continue; // traffic controls does not allow this car to step into junction
+            }
+            if (i != 14)
+            {
+                i2 = junc_zone_convert(i + 1, "hb", "vl");
+                if (i2 >= 0 && road_state->vl_lane[i2])    // check if next car position is empty
+                    continue;                              // prevent traffic collision
+                i2 = junc_zone_convert(i + 1, "hb", "vr"); //
+                if (i2 >= 0 && road_state->vr_lane[i2])    // check if next car position is empty
+                    continue;                              // prevent traffic collision
+                if (road_state->hb_lane[i + 1])            // check if next car position is empty
+                    continue;                              // prevent traffic collision
+            }
+
+            // car can safely move one step
+            road_state->hb_lane[i] = 0; // clear old position
+            if (i != 14)
+                road_state->hb_lane[i + 1] = 1; // set to next position
+            else
+                (*get_passed_traffic())++;
+            // draw_traffic_jump(road_state, i, "hb");
+        }
+    }
+
+    for (int i = 9; i >= 0; i--)
+    {
+        if (road_state->vl_lane[i])
+        {
+            if (i != 9 && !inside_junc_zone(i, "vl") && inside_junc_zone(i + 1, "vl")) // check if we will step into junction in next step
+            {
+                if (road_state->vl_lane_light == LIGHT_RED || road_state->vl_lane_light == LIGHT_YELLOW)
+                    continue; // traffic controls does not allow this car to step into junction
+            }
+            if (i != 9)
+            {
+                i2 = junc_zone_convert(i + 1, "vl", "ht");
+                if (i2 >= 0 && road_state->ht_lane[i2])    // check if next car position is empty
+                    continue;                              // prevent traffic collision
+                i2 = junc_zone_convert(i + 1, "vl", "hb"); //
+                if (i2 >= 0 && road_state->hb_lane[i2])    // check if next car position is empty
+                    continue;                              // prevent traffic collision
+                if (road_state->vl_lane[i + 1])            // check if next car position is empty
+                    continue;                              // prevent traffic collision
+            }
+
+            // car can safely move one step
+            road_state->vl_lane[i] = 0; // clear old position
+            if (i != 9)
+                road_state->vl_lane[i + 1] = 1; // set to next position
+            else
+                (*get_passed_traffic())++;
+            // draw_traffic_jump(road_state, i, "hb");
+        }
+    }
+
+    for (int i = 9; i >= 0; i--)
+    {
+        if (road_state->vr_lane[i])
+        {
+            if (i != 9 && !inside_junc_zone(i, "vr") && inside_junc_zone(i + 1, "vr")) // check if we will step into junction in next step
+            {
+                if (road_state->vr_lane_light == LIGHT_RED || road_state->vr_lane_light == LIGHT_YELLOW)
+                    continue; // traffic controls does not allow this car to step into junction
+            }
+            if (i != 9)
+            {
+                i2 = junc_zone_convert(i + 1, "vr", "ht");
+                if (i2 >= 0 && road_state->ht_lane[i2])    // check if next car position is empty
+                    continue;                              // prevent traffic collision
+                i2 = junc_zone_convert(i + 1, "vr", "hb"); //
+                if (i2 >= 0 && road_state->hb_lane[i2])    // check if next car position is empty
+                    continue;                              // prevent traffic collision
+                if (road_state->vr_lane[i + 1])            // check if next car position is empty
+                    continue;                              // prevent traffic collision
+            }
+
+            // car can safely move one step
+            road_state->vr_lane[i] = 0; // clear old position
+            if (i != 9)
+                road_state->vr_lane[i + 1] = 1; // set to next position
+            else
+                (*get_passed_traffic())++;
+            // draw_traffic_jump(road_state, i, "hb");
         }
     }
 }
