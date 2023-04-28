@@ -40,6 +40,8 @@ OBJ_FILES = $(SOURCE_FILES:%.c=$(BUILD_DIR)/%.o)
 
 DEP_FILE = $(OBJ_FILES:%.o=%.d)
 
+all: run
+
 ${BIN} : $(BUILD_DIR)/$(BIN)
 
 ${BUILD_DIR}/${BIN} : ${OBJ_FILES}
