@@ -68,6 +68,32 @@ bool inside_junc_zone(int i, const char *lane)
     }
 }
 
+bool entered_junc_zone(int i, const char *lane)
+{
+    if (strcmp(lane, "hb") == 0)
+        return i > 5;
+    else if (strcmp(lane, "ht") == 0)
+    {
+        return i > 4;
+    }
+    else if (strcmp(lane, "vl") == 0)
+    {
+        return i > 3;
+    }
+    else if (strcmp(lane, "vr") == 0)
+    {
+        return i > 3;
+    }
+    else
+    {
+        char c[200];
+        sprintf(c, "%s: uknown lane: %s", __func__, lane);
+        draw_fatal_exit(c);
+        return false; // unreachable
+    }
+}
+
+
 int junc_zone_convert(int i, const char *from_lane, const char *to_lane)
 {
     if (i == 4 && strcmp(from_lane, "vl") == 0 && strcmp(to_lane, "ht") == 0)

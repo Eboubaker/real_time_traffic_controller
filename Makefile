@@ -35,6 +35,7 @@ SOURCE_FILES += ${FREERTOS_DIR}/Source/stream_buffer.c
 CFLAGS := -ggdb3 -O0 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
 LDFLAGS := -ggdb3 -O0 -pthread
 LDFLAGS += -L"${LIB_PATH}/lib" -lncursesw
+#LDFLAGS += -lncurses
 
 OBJ_FILES = $(SOURCE_FILES:%.c=$(BUILD_DIR)/%.o)
 

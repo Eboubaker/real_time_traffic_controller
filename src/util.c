@@ -9,14 +9,7 @@
 bool rand_prob(float prob)
 {
     float r = (float)rand() / RAND_MAX;
-    if (r < prob)
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
+    return r < prob;
 }
 
 int rrand_int(int minimum_number, int max_number)

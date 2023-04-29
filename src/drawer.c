@@ -1,6 +1,5 @@
 #include "drawer.h"
 #include "types.h"
-#include "ncurses.h"
 #include <locale.h>
 #include <stdlib.h>
 #include "config.h"
@@ -12,6 +11,8 @@
 
 #define LOG_CAP 100
 #define LOG_MSG_LEN 500
+
+#define WIN_MIN_ROWS 18
 
 char **log;
 int next_log_i;
@@ -27,44 +28,51 @@ WINDOW *get_win()
 void draw_controlls()
 {
     move(size.ws_row - 1, 0);
-    char s[100];
+    LOG("Controlls: %d\n", size.ws_row - 1);
     attrset(COLOR_PAIR(TEXT_COLOR));
-    sprintf(s, "Controlls: [flow-fraction:horiz:[w/W]:%.2f,vert:[e/E]:%.2f]", *get_htraffic(), *get_vtraffic());
-    printw(s);
+    printw("Controlls: [flow-fraction:horiz:[w/W]:%.2f,vert:[e/E]:%.2f]", *get_htraffic(), *get_vtraffic());
     refresh();
 }
-
+void draw_traffic_passed()
+{
+    attrset(COLOR_PAIR(TEXT_COLOR));
+    move(size.ws_row - 7, 0);
+    printw("Traffic passed: %d", *get_passed_traffic());
+    move(0, 0);
+    refresh();
+}
 void draw_light_timers(RoadState_t *road_state)
 {
-    char s[100];
     attrset(COLOR_PAIR(TEXT_COLOR));
     move(size.ws_row - 2, 0);
-    #define S_ARGS(x) road_state->x##_lane_red_time / 1000, road_state->x##_lane_green_time / 1000, road_state->x##_lane_yellow_time / 1000
-
-    sprintf(s, "  Horizontal top: red: %ds, green: %ds, yellow: %ds", S_ARGS(ht));
-    printw(s);
+#define S_ARGS(x) road_state->x##_lane_red_time / 1000, road_state->x##_lane_green_time / 1000, road_state->x##_lane_yellow_time / 1000
+    printw("  Horizontal top: red: %ds, green: %ds, yellow: %ds", S_ARGS(ht));
     move(size.ws_row - 3, 0);
-    sprintf(s, "  Horizontal bottom: red: %ds, green: %ds, yellow: %ds", S_ARGS(hb));
-    printw(s);
+    printw("  Horizontal bottom: red: %ds, green: %ds, yellow: %ds", S_ARGS(hb));
     move(size.ws_row - 4, 0);
-    sprintf(s, "  Vertical Left: red: %ds, green: %ds, yellow: %ds", S_ARGS(vl));
-    printw(s);
+    printw("  Vertical Left: red: %ds, green: %ds, yellow: %ds", S_ARGS(vl));
     move(size.ws_row - 5, 0);
-    sprintf(s, "  Vertical Right: red: %ds, green: %ds, yellow: %ds", S_ARGS(vr));
-    printw(s);
+    printw("  Vertical Right: red: %ds, green: %ds, yellow: %ds", S_ARGS(vr));
     move(size.ws_row - 6, 0);
-    sprintf(s, "Light Timers:");
-    printw(s);
+    addstr("Light Timers:");
     refresh();
 }
 
 void fresh_screen(RoadState_t *road_state)
 {
     clear();
+    if (size.ws_row < WIN_MIN_ROWS)
+    {
+        move(0, 0);
+        attrset(COLOR_PAIR(TEXT_COLOR));
+        printw("WINDOW HEIGHT VERY LOW, RESIZE");
+        refresh();
+        return;
+    }
     draw_light_timers(road_state);
+    draw_traffic_passed();
     draw_controlls();
     draw_logs();
-
 }
 
 void init_drawer()
@@ -93,7 +101,7 @@ void init_drawer()
     init_pair(TRAFFIC_COLOR, COLOR_WHITE, COLOR_BLACK);
     init_pair(NO_LIGHT_LANE_COLOR, COLOR_WHITE, COLOR_BLACK);
     init_pair(ROAD_COLOR, COLOR_BLACK, COLOR_BLACK);
-    init_pair(TEXT_COLOR, COLOR_BLACK, COLOR_BLACK);
+    init_pair(TEXT_COLOR, COLOR_WHITE, COLOR_BLACK);
 }
 void push_log(char *in_msg)
 {
@@ -126,10 +134,20 @@ void draw_first(RoadState_t *road_state)
 void on_window_resize()
 {
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+    // clearok(win, true);
 }
 
 void redraw_fully(RoadState_t *road_state)
 {
+    if (size.ws_row < WIN_MIN_ROWS)
+    {
+        clear();
+        move(0, 0);
+        attrset(COLOR_PAIR(TEXT_COLOR));
+        printw("WINDOW HEIGHT VERY LOW, RESIZE");
+        refresh();
+        return;
+    }
     fresh_screen(road_state);
     draw_lane_lights(road_state);
     draw_traffic(road_state);
@@ -203,7 +221,7 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
         if (i != 14)
         {
             move(4, 1 + (2 * i) + 2);
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_HT);
         }
     }
     else if (strcmp(lane, "hb") == 0)
@@ -213,7 +231,7 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
         if (i != 14)
         {
             move(5, (2 * (14 - i - 1)) + 3);
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_HB);
         }
     }
     else if (strcmp(lane, "vl") == 0)
@@ -223,7 +241,7 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
         if (i != 9)
         {
             move(i + 1, 13);
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_VL);
         }
     }
     else if (strcmp(lane, "vr") == 0)
@@ -233,7 +251,7 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
         if (i != 9)
         {
             move(i + 1, 13);
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_VR);
         }
     }
     move(0, 0);
@@ -253,7 +271,7 @@ void draw_traffic(RoadState_t *road_state)
         if (road_state->vl_lane[i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_VL);
         }
         else
         {
@@ -270,7 +288,7 @@ void draw_traffic(RoadState_t *road_state)
         if (road_state->vr_lane[9 - i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_VR);
         }
         else
         {
@@ -290,7 +308,7 @@ void draw_traffic(RoadState_t *road_state)
         if (road_state->ht_lane[i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_HT);
         }
         else
         {
@@ -307,13 +325,13 @@ void draw_traffic(RoadState_t *road_state)
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
 
-            printw(CAR_GLYPH);
+            printw(CAR_GLYPH_HB);
         }
         else
         {
             int ivr = junc_zone_convert(14 - i, "hb", "vr");
             int ivl = junc_zone_convert(14 - i, "hb", "vl");
-            LOG("i: %d cont: %d, move: %d %d, ivr: %d, ivl: %d, cond1: %d, cond2: %i\n", i, road_state->hb_lane[i], 5, 1 + 2 * i, ivr, ivl, !(ivr >= 0 && road_state->vr_lane[ivr]) , !(ivl >= 0 && road_state->vl_lane[ivl]));
+            // LOG("i: %d cont: %d, move: %d %d, ivr: %d, ivl: %d, cond1: %d, cond2: %i\n", i, road_state->hb_lane[i], 5, 1 + 2 * i, ivr, ivl, !(ivr >= 0 && road_state->vr_lane[ivr]), !(ivl >= 0 && road_state->vl_lane[ivl]));
             if (!(ivr >= 0 && road_state->vr_lane[ivr]) && !(ivl >= 0 && road_state->vl_lane[ivl]))
             {
                 attrset(COLOR_PAIR(ROAD_COLOR));

@@ -2,7 +2,7 @@
 #define DRAWER_H
 
 #include "types.h"
-#include "ncurses.h"
+#include "ncursesw/ncurses.h"
 
 void draw_lane_lights(RoadState_t *road_state);
 void draw_traffic(RoadState_t *road_state);

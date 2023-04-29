@@ -4,9 +4,6 @@
     fprintf(get_log_file(), fmt __VA_OPT__(,)__VA_ARGS__); \
     fflush(get_log_file())
 
-// define language, give syntax, example how to use language, most important thing is example,
-
-
 #define TEXT_COLOR 8
 #define ROAD_COLOR 7
 
@@ -23,7 +20,12 @@
 #define RED_LIGHT_TIME_MS 10000
 #define YELLOW_LIGHT_TIME_MS 2000
 
-#define CAR_GLYPH "#"
+#include "ncursesw/ncurses.h"
+
+#define CAR_GLYPH_HT "👉"
+#define CAR_GLYPH_HB "👈"
+#define CAR_GLYPH_VL "👇"
+#define CAR_GLYPH_VR "👆"
 
 int *get_generated_traffic();
 int *get_passed_traffic();
