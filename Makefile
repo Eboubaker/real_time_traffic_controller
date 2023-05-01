@@ -1,7 +1,7 @@
 # https://freertos.org/Creating-a-new-FreeRTOS-project.html
 # Based on /opt/optsync/FreeRTOS/FreeRTOS/Demo/Posix_GCC/Makefile
 
-CC := gcc
+CC := clang
 BIN := task
 LIB_PATH := ${HOME}/.local 
 

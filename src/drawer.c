@@ -12,12 +12,14 @@
 #define LOG_CAP 100
 #define LOG_MSG_LEN 500
 
-#define WIN_MIN_ROWS 18
+#define WIN_MIN_ROWS 17
 
-char **log;
+char **pclog;
 int next_log_i;
 int log_size;
+int logged_messages = 0;
 WINDOW *win;
+int log_inited = -15;
 struct winsize size;
 
 WINDOW *get_win()
@@ -28,9 +30,8 @@ WINDOW *get_win()
 void draw_controlls()
 {
     move(size.ws_row - 1, 0);
-    LOG("Controlls: %d\n", size.ws_row - 1);
     attrset(COLOR_PAIR(TEXT_COLOR));
-    printw("Controlls: [flow-fraction:horiz:[w/W]:%.2f,vert:[e/E]:%.2f]", *get_htraffic(), *get_vtraffic());
+    printw("Controlls: [flow-fraction:horiz:[w⁻/W⁺]:%.2f,vert:[e⁻/E⁺]:%.2f][sim-speed:[+/-]:%d]", *get_htraffic(), *get_vtraffic(), *get_sim_speed());
     refresh();
 }
 void draw_traffic_passed()
@@ -44,17 +45,17 @@ void draw_traffic_passed()
 void draw_light_timers(RoadState_t *road_state)
 {
     attrset(COLOR_PAIR(TEXT_COLOR));
-    move(size.ws_row - 2, 0);
-#define S_ARGS(x) road_state->x##_lane_red_time / 1000, road_state->x##_lane_green_time / 1000, road_state->x##_lane_yellow_time / 1000
-    printw("  Horizontal top: red: %ds, green: %ds, yellow: %ds", S_ARGS(ht));
-    move(size.ws_row - 3, 0);
-    printw("  Horizontal bottom: red: %ds, green: %ds, yellow: %ds", S_ARGS(hb));
     move(size.ws_row - 4, 0);
-    printw("  Vertical Left: red: %ds, green: %ds, yellow: %ds", S_ARGS(vl));
+#define S_ARGS(x) road_state->x##_lane_red_time_ms / 1000, road_state->x##_lane_green_time_ms / 1000, road_state->x##_lane_yellow_time_ms / 1000
+    printw("  Horizontal: green: %ds, red: %ds, yellow: %ds", S_ARGS(ht));
+    // move(size.ws_row - 4, 0);
+    // printw("  Horizontal bottom: green: %ds, red: %ds, yellow: %ds", S_ARGS(hb));
+    // move(size.ws_row - 4, 0);
+    // printw("  Vertical Left: green: %ds, red: %ds, yellow: %ds", S_ARGS(vl));
     move(size.ws_row - 5, 0);
-    printw("  Vertical Right: red: %ds, green: %ds, yellow: %ds", S_ARGS(vr));
+    printw("  Vertical: green: %ds, red: %ds, yellow: %ds", S_ARGS(vr));
     move(size.ws_row - 6, 0);
-    addstr("Light Timers:");
+    addstr("Tweaked Light Timers:");
     refresh();
 }
 
@@ -65,7 +66,7 @@ void fresh_screen(RoadState_t *road_state)
     {
         move(0, 0);
         attrset(COLOR_PAIR(TEXT_COLOR));
-        printw("WINDOW HEIGHT VERY LOW, RESIZE");
+        printw("SMALL WINDOW HEIGHT, RESIZE IT");
         refresh();
         return;
     }
@@ -77,19 +78,22 @@ void fresh_screen(RoadState_t *road_state)
 
 void init_drawer()
 {
-    next_log_i = 0;
-    log_size = 0;
-    log = malloc(sizeof(char *) * LOG_CAP);
-    for (int i = 0; i < LOG_CAP; i++)
+    if (log_inited == -15)
     {
-        log[i] = malloc(sizeof(char) * LOG_MSG_LEN);
-        log[i][0] = '\0';
+        log_inited++;
+        next_log_i = 0;
+        log_size = 0;
+        pclog = malloc(sizeof(char *) * LOG_CAP);
+        for (int i = 0; i < LOG_CAP; i++)
+        {
+            pclog[i] = malloc(sizeof(char) * LOG_MSG_LEN);
+            pclog[i][0] = '\0';
+        }
+        setlocale(LC_ALL, "");
     }
-
-    setlocale(LC_ALL, "");
-
     // init ncurses screen
     win = initscr();
+    nodelay(win, true);
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
 
     // init lane colors
@@ -105,7 +109,7 @@ void init_drawer()
 }
 void push_log(char *in_msg)
 {
-    strcpy(log[next_log_i], in_msg);
+    sprintf(pclog[next_log_i], "%2d: %s", ++logged_messages, in_msg);
     next_log_i++;
     if (next_log_i == LOG_CAP)
         next_log_i = 0;
@@ -119,22 +123,19 @@ void draw_logs()
     attrset(COLOR_PAIR(TEXT_COLOR));
     for (int i = n - 1; i >= 0; i--)
     {
-        move(size.ws_row - 1 - i, 40);
-        printw(log[i]);
+        move(size.ws_row - 3 - i, 50);
+        addstr(pclog[n - 1 - i]);
     }
     move(0, 0);
     refresh();
 }
 
-void draw_first(RoadState_t *road_state)
+void on_window_resize(RoadState_t *road_state)
 {
-    redraw_fully(road_state);
-}
-
-void on_window_resize()
-{
+    endwin();
+    init_drawer();
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-    // clearok(win, true);
+    redraw_fully(road_state);
 }
 
 void redraw_fully(RoadState_t *road_state)
@@ -144,7 +145,7 @@ void redraw_fully(RoadState_t *road_state)
         clear();
         move(0, 0);
         attrset(COLOR_PAIR(TEXT_COLOR));
-        printw("WINDOW HEIGHT VERY LOW, RESIZE");
+        printw("WINDOW HEIGHT TOO SMALL (%d<%d), PLEASE RESIZE", size.ws_row, WIN_MIN_ROWS);
         refresh();
         return;
     }
@@ -171,13 +172,16 @@ void draw_fatal_exit(char *msg)
 
 void draw_lane_lights(RoadState_t *road_state)
 {
+    if (size.ws_row < WIN_MIN_ROWS)
+        return;
     // if (lane == 'h')
     // {
     attrset(COLOR_PAIR(road_state->ht_lane_light));
-    move(3, 0);
+    move((V_LANE_CAP - 4) / 2, 0);
     printw("==========");
     attrset(COLOR_PAIR(NO_LIGHT_LANE_COLOR));
-    move(3, 19);
+    move((V_LANE_CAP - 4) / 2, 19);
+
     printw("==========");
     move(6, 0);
     printw("==========");
@@ -238,7 +242,7 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
     {
         move(i, 13);
         printw(" ");
-        if (i != 9)
+        if (i != V_LANE_CAP - 1)
         {
             move(i + 1, 13);
             printw(CAR_GLYPH_VL);
@@ -248,7 +252,7 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
     {
         move(i, 15);
         printw(" ");
-        if (i != 9)
+        if (i != V_LANE_CAP - 1)
         {
             move(i + 1, 13);
             printw(CAR_GLYPH_VR);
@@ -285,7 +289,7 @@ void draw_traffic(RoadState_t *road_state)
         }
         printw(" ");
         move(i, 15); // vertical right lane
-        if (road_state->vr_lane[9 - i])
+        if (road_state->vr_lane[V_LANE_CAP - 1 - i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
             printw(CAR_GLYPH_VR);

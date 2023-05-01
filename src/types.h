@@ -6,13 +6,14 @@
 
 #include "config.h"
 
+
 typedef struct
 {
     // lanes: 0 for empty 1 for car
-    int vl_lane[10]; // vertical left lane, printed from top to bottom
-    int vr_lane[10]; // vertical right lane, printed from bottom to top
-    int ht_lane[15]; // horizontal top lane, printed from right to left
-    int hb_lane[15]; // horizontal bottom lane, printed from left to right
+    int vl_lane[V_LANE_CAP]; // vertical left lane, printed from top to bottom
+    int vr_lane[V_LANE_CAP]; // vertical right lane, printed from bottom to top
+    int ht_lane[H_LANE_CAP]; // horizontal top lane, printed from right to left
+    int hb_lane[H_LANE_CAP]; // horizontal bottom lane, printed from left to right
 
     // light control 
     // 1: green 
@@ -25,17 +26,18 @@ typedef struct
     int vl_lane_light; // vertical left lane light
 
     // light timers for each lane in ms.
-    int hb_lane_red_time;
-    int hb_lane_green_time;
-    int hb_lane_yellow_time;
-    int ht_lane_red_time;
-    int ht_lane_green_time;
-    int ht_lane_yellow_time;
-    int vl_lane_red_time;
-    int vl_lane_green_time;
-    int vl_lane_yellow_time;
-    int vr_lane_red_time;
-    int vr_lane_green_time;
-    int vr_lane_yellow_time;
+    int hb_lane_red_time_ms;
+    int hb_lane_green_time_ms;
+    int hb_lane_yellow_time_ms;
+    int ht_lane_red_time_ms;
+    int ht_lane_green_time_ms;
+    int ht_lane_yellow_time_ms;
+    int vl_lane_red_time_ms;
+    int vl_lane_green_time_ms;
+    int vl_lane_yellow_time_ms;
+    int vr_lane_red_time_ms;
+    int vr_lane_green_time_ms;
+    int vr_lane_yellow_time_ms;
 } RoadState_t;
+void init_road_state(RoadState_t *road_state);
 #endif // TYPES_H

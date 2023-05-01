@@ -6,10 +6,9 @@
 
 void draw_lane_lights(RoadState_t *road_state);
 void draw_traffic(RoadState_t *road_state);
-void draw_first(RoadState_t *road_state);
 void draw_fatal_exit(char *msg);
 void init_drawer();
-void on_window_resize();
+void on_window_resize(RoadState_t *road_state);
 void draw_logs();
 void push_log(char *in_msg);
 void redraw_fully(RoadState_t *road_state);

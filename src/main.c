@@ -20,191 +20,51 @@
 #include "memory.h"
 #include <pthread.h>
 #include <time.h> // for clock_t, clock(), CLOCKS_PER_SEC
+#include "config.h"
 
+RoadState_t road_state;
 StreamBufferHandle_t hsensor_data;
 StreamBufferHandle_t hsensor_signal;
 StreamBufferHandle_t vsensor_data;
 StreamBufferHandle_t vsensor_signal;
+TaskHandle_t drawerHandle,
+    generatorHandle,
+    lightTweakerHandle,
+    htControllerHandle,
+    hbControllerHandle,
+    vlControllerHandle,
+    vrControllerHandle,
+    hsensorHandle,
+    vsensorHandle;
 
-void vTaskDrawer(void *pvParameters)
-{
-    RoadState_t *road_state = (RoadState_t *)pvParameters;
-    char c;
-    init_drawer();
-    WINDOW *win = get_win();
-    nodelay(win, true);
-
-    draw_first(road_state);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    while (1)
-    {
-        traffic_step(road_state);
-        redraw_fully(road_state);
-        c = getch();
-        if (c == 'q')
-            break;
-        else if (c == 'w')
-            (*get_htraffic()) += .05;
-        else if (c == 'W')
-            (*get_htraffic()) -= .05;
-        else if (c == 'e')
-            (*get_vtraffic()) += .05;
-        else if (c == 'E')
-            (*get_vtraffic()) -= .05;
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
-    vTaskEndScheduler();
-}
-
-void vTaskhTrafficSensor(void *pvParameters)
-{
-    RoadState_t *road_state = (RoadState_t *)pvParameters;
-    bool sig;
-    size_t xReceivedBytes, xSentBytes;
-    int want_to_pass;
-    while (1)
-    {
-        // wait for a request
-        xReceivedBytes = xStreamBufferReceive(hsensor_signal,
-                                              (void *)&sig,
-                                              sizeof(bool),
-                                              portMAX_DELAY);
-        if (xReceivedBytes <= 0 || !sig)
-            continue;
-        want_to_pass = 0;
-        for (int i = 14; i >= 0; i++)
-        {
-            if (road_state->hb_lane[i] && !entered_junc_zone(i, "hb"))
-                want_to_pass++;
-            if (road_state->ht_lane[i] && !entered_junc_zone(i, "ht"))
-                want_to_pass++;
-        }
-        // send sensor data
-        xSentBytes = xStreamBufferSend(hsensor_data,
-                                       (void *)(&want_to_pass),
-                                       sizeof(int),
-                                       pdMS_TO_TICKS(50));
-        LOG("sent\n");
-        if (xSentBytes != sizeof(int))
-        {
-            LOG("failed to send h sensor data\n");
-            exit(7);
-        }
-    }
-}
-void vTaskvTrafficSensor(void *pvParameters)
-{
-    RoadState_t *road_state = (RoadState_t *)pvParameters;
-    bool sig;
-    size_t xReceivedBytes, xSentBytes;
-    int want_to_pass;
-    while (1)
-    {
-        // wait for a request
-        xReceivedBytes = xStreamBufferReceive(vsensor_signal,
-                                              (void *)&sig,
-                                              sizeof(bool),
-                                              portMAX_DELAY);
-        if (xReceivedBytes <= 0 || !sig)
-            continue;
-        want_to_pass = 0;
-        for (int i = 9; i >= 0; i++)
-        {
-            if (road_state->vl_lane[i] && !entered_junc_zone(i, "vl"))
-                want_to_pass++;
-            if (road_state->vr_lane[i] && !entered_junc_zone(i, "vr"))
-                want_to_pass++;
-        }
-        // send sensor data
-        xSentBytes = xStreamBufferSend(vsensor_data,
-                                       (void *)(&want_to_pass),
-                                       sizeof(int),
-                                       pdMS_TO_TICKS(50));
-        LOG("sent\n");
-
-        if (xSentBytes != sizeof(int))
-        {
-            LOG("failed to send v sensor data\n");
-            exit(7);
-        }
-    }
-}
-void vTaskTrafficGenerator(void *pvParameters)
-{
-    RoadState_t *road_state = (RoadState_t *)pvParameters;
-    while (1)
-    {
-        generate_traffic(road_state);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-void vTaskLightTimersTweaker(void *pvParameters)
-{
-    RoadState_t *road_state = (RoadState_t *)pvParameters;
-    size_t xReceivedBytes, xSentBytes;
-    bool sig = true;
-    int hwaiting, vwaiting;
-    while (1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        xSentBytes = xStreamBufferSend(hsensor_signal, &sig, sizeof(bool), pdMS_TO_TICKS(50));
-        if (xSentBytes < sizeof(bool))
-        {
-            LOG("h sensor signal not sent\n");
-            exit(7);
-        }
-        xSentBytes = xStreamBufferSend(vsensor_signal, &sig, sizeof(bool), pdMS_TO_TICKS(50));
-        vTaskDelay(pdMS_TO_TICKS(2000));
-
-        if (xSentBytes < sizeof(bool))
-        {
-            LOG("v sensor signal not sent\n");
-            exit(7);
-        }
-        // vTaskDelay(pdMS_TO_TICKS(2000));
-        xReceivedBytes = xStreamBufferReceive(hsensor_data, &hwaiting, sizeof(int), pdMS_TO_TICKS(50));
-        if (xReceivedBytes < sizeof(int))
-        {
-            LOG("h sensor data not received\n");
-            exit(7);
-        }
-        xReceivedBytes = xStreamBufferReceive(vsensor_data, &vwaiting, sizeof(int), pdMS_TO_TICKS(50));
-        if (xReceivedBytes < sizeof(int))
-        {
-            LOG("h sensor data not received\n");
-            exit(7);
-        }
-        LOG("hsensor=%d, vsensor=%d\n", hwaiting, vwaiting);
-    }
-}
-#define CONTROLLER_TASK_BODY(l)                                          \
-    RoadState_t *road_state = (RoadState_t *)pvParameters;               \
-    while (1)                                                            \
-    {                                                                    \
-        draw_lane_lights(road_state);                                    \
-        if (road_state->l##_lane_light == LIGHT_RED)                     \
-        {                                                                \
-            vTaskDelay(pdMS_TO_TICKS(road_state->l##_lane_red_time));    \
-            road_state->l##_lane_light = LIGHT_GREEN;                    \
-            continue;                                                    \
-        }                                                                \
-        else if (road_state->l##_lane_light == LIGHT_YELLOW)             \
-        {                                                                \
-            vTaskDelay(pdMS_TO_TICKS(road_state->l##_lane_yellow_time)); \
-            road_state->l##_lane_light = LIGHT_RED;                      \
-            continue;                                                    \
-        }                                                                \
-        else if (road_state->l##_lane_light == LIGHT_GREEN)              \
-        {                                                                \
-            vTaskDelay(pdMS_TO_TICKS(road_state->l##_lane_green_time));  \
-            road_state->l##_lane_light = LIGHT_YELLOW;                   \
-            continue;                                                    \
-        }                                                                \
-        else                                                             \
-        {                                                                \
-            printf("unkown light: %d\n", road_state->l##_lane_light);    \
-            exit(1);                                                     \
-        }                                                                \
+#define CONTROLLER_TASK_BODY(l)                                                                \
+    RoadState_t *road_state = (RoadState_t *)pvParameters;                                     \
+    while (1)                                                                                  \
+    {                                                                                          \
+        draw_lane_lights(road_state);                                                          \
+        if (road_state->l##_lane_light == LIGHT_RED)                                           \
+        {                                                                                      \
+            vTaskDelay(pdMS_TO_TICKS(road_state->l##_lane_red_time_ms / *get_sim_speed()));    \
+            road_state->l##_lane_light = LIGHT_GREEN;                                          \
+            continue;                                                                          \
+        }                                                                                      \
+        else if (road_state->l##_lane_light == LIGHT_YELLOW)                                   \
+        {                                                                                      \
+            vTaskDelay(pdMS_TO_TICKS(road_state->l##_lane_yellow_time_ms / *get_sim_speed())); \
+            road_state->l##_lane_light = LIGHT_RED;                                            \
+            continue;                                                                          \
+        }                                                                                      \
+        else if (road_state->l##_lane_light == LIGHT_GREEN)                                    \
+        {                                                                                      \
+            vTaskDelay(pdMS_TO_TICKS(road_state->l##_lane_green_time_ms / *get_sim_speed()));  \
+            road_state->l##_lane_light = LIGHT_YELLOW;                                         \
+            continue;                                                                          \
+        }                                                                                      \
+        else                                                                                   \
+        {                                                                                      \
+            printf("unkown light: %d\n", road_state->l##_lane_light);                          \
+            exit(1);                                                                           \
+        }                                                                                      \
     }
 
 void vTaskhtLightController(void *pvParameters)
@@ -219,16 +79,177 @@ void vTaskvlLightController(void *pvParameters)
 {
     CONTROLLER_TASK_BODY(vl)
 }
-void vTaskvrLightController(void *pvParameters){
-    CONTROLLER_TASK_BODY(vr)}
+void vTaskvrLightController(void *pvParameters)
+{
+    CONTROLLER_TASK_BODY(vr);
+}
 
-RoadState_t road_state;
-TaskHandle_t drawerHandle, generatorHandle, lightTweakerHandle, htControllerHandle, hbControllerHandle, vlControllerHandle, vrControllerHandle, hsensorHandle, vsensorHandle;
+void vTaskDrawer(void *pvParameters)
+{
+    RoadState_t *road_state = (RoadState_t *)pvParameters;
+    char c;
+    init_drawer();
+    vTaskDelay(pdMS_TO_TICKS(500 / *get_sim_speed()));
+    while (1)
+    {
+        traffic_step(road_state);
+        redraw_fully(road_state);
+        c = getch();
+        if (c == 'q')
+            break;
+        else if (c == 'W')
+            (*get_htraffic()) += .05;
+        else if (c == 'w')
+            (*get_htraffic()) -= .05;
+        else if (c == 'E')
+            (*get_vtraffic()) += .05;
+        else if (c == 'e')
+            (*get_vtraffic()) -= .05;
+        else if (c == '+')
+            (*get_sim_speed()) += 1;
+        else if (c == '-')
+            (*get_sim_speed()) -= 1;
+        vTaskDelay(pdMS_TO_TICKS(500 / *get_sim_speed()));
+    }
+    vTaskEndScheduler();
+}
+#define SENSOR_BODY(s, a, b, n)                                             \
+    RoadState_t *road_state = (RoadState_t *)pvParameters;                  \
+    bool sig;                                                               \
+    size_t xReceivedBytes, xSentBytes;                                      \
+    int want_to_pass;                                                       \
+    while (1)                                                               \
+    {                                                                       \
+        xReceivedBytes = xStreamBufferReceive(s##sensor_signal,             \
+                                              (void *)&sig,                 \
+                                              sizeof(bool),                 \
+                                              portMAX_DELAY);               \
+        if (xReceivedBytes <= 0 || !sig)                                    \
+            continue;                                                       \
+        want_to_pass = 0;                                                   \
+        for (int i = n - 1; i >= 0; i--)                                    \
+        {                                                                   \
+            if (road_state->s##a##_lane[i] && !entered_junc_zone(i, #s #a)) \
+                want_to_pass++;                                             \
+            if (road_state->s##b##_lane[i] && !entered_junc_zone(i, #s #b)) \
+                want_to_pass++;                                             \
+        }                                                                   \
+        xSentBytes = xStreamBufferSend(s##sensor_data,                      \
+                                       (void *)&want_to_pass,               \
+                                       sizeof(int),                         \
+                                       portMAX_DELAY);                      \
+        if (xSentBytes != sizeof(int))                                      \
+        {                                                                   \
+            LOG("failed to send %s sensor data\n", #s);                     \
+            exit(7);                                                        \
+        }                                                                   \
+    }
+void vTaskvTrafficSensor(void *pvParameters)
+{
+    SENSOR_BODY(v, l, r, 10);
+}
+void vTaskhTrafficSensor(void *pvParameters)
+{
+    SENSOR_BODY(h, t, b, 15);
+}
+void vTaskTrafficGenerator(void *pvParameters)
+{
+    RoadState_t *road_state = (RoadState_t *)pvParameters;
+    while (1)
+    {
+        generate_traffic(road_state);
+        vTaskDelay(pdMS_TO_TICKS(1000 / *get_sim_speed()));
+    }
+}
+void vTaskLightTimersTweaker(void *pvParameters)
+{
+    RoadState_t *road_state = (RoadState_t *)pvParameters;
+    size_t xReceivedBytes, xSentBytes;
+    bool sig = true;
+    int hwaiting, vwaiting;
+    int delay_s = 2;
+    TickType_t xsleepms = delay_s * 1000;
+    int frame_time_s = 30;
+    int calcs_per_frame = frame_time_s / delay_s;
+    int calc_i = 0;
+    int hload = 0, vload = 0;
+    while (1)
+    {
+        xSentBytes = xStreamBufferSend(hsensor_signal, (void *)&sig, sizeof(bool), portMAX_DELAY);
+        if (xSentBytes < sizeof(bool))
+        {
+            LOG("h sensor signal not sent\n");
+            exit(7);
+        }
+        xSentBytes = xStreamBufferSend(vsensor_signal, (void *)&sig, sizeof(bool), portMAX_DELAY);
+        if (xSentBytes < sizeof(bool))
+        {
+            LOG("v sensor signal not sent\n");
+            exit(7);
+        }
+        xReceivedBytes = xStreamBufferReceive(hsensor_data, (void *)&hwaiting, sizeof(int), portMAX_DELAY);
+        if (xReceivedBytes < sizeof(int))
+        {
+            LOG("h sensor data not received\n");
+            exit(7);
+        }
+        xReceivedBytes = xStreamBufferReceive(vsensor_data, (void *)&vwaiting, sizeof(int), portMAX_DELAY);
+        if (xReceivedBytes < sizeof(int))
+        {
+            LOG("v sensor data not received\n");
+            exit(7);
+        }
+        // LOG("hsensor=%d, vsensor=%d\n", hwaiting, vwaiting);
+        hload += hwaiting;
+        vload += vwaiting;
+
+        calc_i++;
+        if (calc_i == calcs_per_frame)
+        {
+            calc_i = 0;
+            LOG("hload=%2d, vload=%2d ==> ", hload, vload);
+            if (hload > vload)
+            {
+                if (road_state->ht_lane_red_time_ms > 1000)
+                {
+                    road_state->ht_lane_green_time_ms += 1000;
+                    road_state->hb_lane_green_time_ms += 1000;
+                    road_state->vl_lane_red_time_ms += 1000;
+                    road_state->vr_lane_red_time_ms += 1000;
+
+                    road_state->ht_lane_red_time_ms -= 1000;
+                    road_state->hb_lane_red_time_ms -= 1000;
+                    road_state->vl_lane_green_time_ms -= 1000;
+                    road_state->vr_lane_green_time_ms -= 1000;
+                    LOG("increasing time for h lane\n");
+                }
+            }
+            else
+            {
+                if (road_state->vl_lane_red_time_ms > 1000)
+                {
+                    road_state->vl_lane_green_time_ms += 1000;
+                    road_state->vr_lane_green_time_ms += 1000;
+                    road_state->ht_lane_red_time_ms += 1000;
+                    road_state->hb_lane_red_time_ms += 1000;
+
+                    road_state->vl_lane_red_time_ms -= 1000;
+                    road_state->vr_lane_red_time_ms -= 1000;
+                    road_state->ht_lane_green_time_ms -= 1000;
+                    road_state->hb_lane_green_time_ms -= 1000;
+                    LOG("increasing time for v lane\n");
+                }
+            }
+            hload = 0;
+            vload = 0;
+        };
+        vTaskDelay(pdMS_TO_TICKS(xsleepms / *get_sim_speed()));
+    }
+}
 
 void resizeHandler(int sig)
 {
-    on_window_resize();
-    redraw_fully(&road_state);
+    on_window_resize(&road_state);
 }
 
 int main(void)
@@ -237,45 +258,9 @@ int main(void)
     vsensor_signal = xStreamBufferCreate(sizeof(bool), sizeof(bool));
     hsensor_data = xStreamBufferCreate(sizeof(int), sizeof(int));
     vsensor_data = xStreamBufferCreate(sizeof(int), sizeof(int));
-
-    init_config();
     signal(SIGWINCH, resizeHandler);
-    memset(&road_state, 0, sizeof(RoadState_t));
-    *get_generated_traffic() = 0;
-    *get_passed_traffic() = 0;
-
-    generate_traffic(&road_state);
-    road_state.hb_lane_light = LIGHT_RED;
-    road_state.ht_lane_light = LIGHT_RED;
-    road_state.vl_lane_light = LIGHT_GREEN;
-    road_state.vr_lane_light = LIGHT_GREEN;
-
-    road_state.hb_lane_red_time = RED_LIGHT_TIME_MS;
-    road_state.hb_lane_green_time = GREEN_LIGHT_TIME_MS;
-    road_state.hb_lane_yellow_time = YELLOW_LIGHT_TIME_MS;
-    road_state.ht_lane_red_time = RED_LIGHT_TIME_MS;
-    road_state.ht_lane_green_time = GREEN_LIGHT_TIME_MS;
-    road_state.ht_lane_yellow_time = YELLOW_LIGHT_TIME_MS;
-    road_state.vl_lane_red_time = RED_LIGHT_TIME_MS;
-    road_state.vl_lane_green_time = GREEN_LIGHT_TIME_MS;
-    road_state.vl_lane_yellow_time = YELLOW_LIGHT_TIME_MS;
-    road_state.vr_lane_red_time = RED_LIGHT_TIME_MS;
-    road_state.vr_lane_green_time = GREEN_LIGHT_TIME_MS;
-    road_state.vr_lane_yellow_time = YELLOW_LIGHT_TIME_MS;
-
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    size_t stack_size = 1024 * 1024; // 1MB
-    pthread_attr_setstacksize(&attr, stack_size);
-
-    // for (int i = 0; i < 5; i++)
-    // {
-    //     traffic_step(&road_state);
-    //     redraw_fully(&road_state);
-    // }
-    // getch();
-    // clear();
-    // endwin();
+    init_config();
+    init_road_state(&road_state);
 
     xTaskCreate(&vTaskDrawer, "Drawer Task", 1024, &road_state, 1, &drawerHandle);
     xTaskCreate(&vTaskTrafficGenerator, "Traffic Generator Controller", 1024, &road_state, 1, &generatorHandle);
@@ -286,19 +271,12 @@ int main(void)
     xTaskCreate(&vTaskhbLightController, "hb Light Controller", 1024, &road_state, 1, &hbControllerHandle);
     xTaskCreate(&vTaskvlLightController, "vl Light Controller", 1024, &road_state, 1, &vlControllerHandle);
     xTaskCreate(&vTaskvrLightController, "vr Light Controller", 1024, &road_state, 1, &vrControllerHandle);
+    // vTaskStartScheduler();
+    road_state.hb_lane[0] = 1;
+    init_drawer();
+    redraw_fully(&road_state);
+    getchar();
 
-    // xTaskCreate(&vTask2, "Task 2", 1024, NULL, 1, NULL);
-
-    vTaskStartScheduler();
-
-    // init_drawer();
-    // WINDOW *win = get_win();
-    // // road_state.vl_lane[5] = 1;
-    // // road_state.hb_lane[8] = 1;
-    // draw_first(&road_state);
-    // getchar();
-    clear();
     endwin();
-
     return 0;
 }
