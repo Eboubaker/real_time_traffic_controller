@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #define V_LANE_CELLS 8
-#define H_LANE_CELLS 9
+#define H_LANE_CELLS 8
 
 // DO NOT MODIFY, MUST BE MULTIPLE OF 2
 // instead change CELLS
