@@ -10,8 +10,8 @@
 float htraffic = .25;
 float vtraffic = .25;
 
-
-float *get_htraffic() {
+float *get_htraffic()
+{
     return &htraffic;
 }
 float *get_vtraffic()
@@ -46,18 +46,18 @@ void generate_traffic(RoadState_t *road_state)
 bool inside_junc_zone(int i, const char *lane)
 {
     if (strcmp(lane, "hb") == 0)
-        return i > 5 && i < 10;
+        return i > (H_LANE_CAP - 4) / 2 - 1 && i < (H_LANE_CAP - 4) / 2 + 1 + 5;
     else if (strcmp(lane, "ht") == 0)
     {
-        return i > 4 && i < 9;
+        return i > (H_LANE_CAP - 4) / 2 - 1 && i < (H_LANE_CAP - 4) / 2 + 1 + 5;
     }
     else if (strcmp(lane, "vl") == 0)
     {
-        return i > 3 && i < 6;
+        return i > (V_LANE_CAP - 2) / 2 - 1 && i < (V_LANE_CAP - 2) / 2 - 1 + 3;
     }
     else if (strcmp(lane, "vr") == 0)
     {
-        return i > 3 && i < 6;
+        return i > (V_LANE_CAP - 2) / 2 - 1 && i < (V_LANE_CAP - 2) / 2 - 1 + 3;
     }
     else
     {
@@ -71,19 +71,13 @@ bool inside_junc_zone(int i, const char *lane)
 bool entered_junc_zone(int i, const char *lane)
 {
     if (strcmp(lane, "hb") == 0)
-        return i > 5;
+        return i > (H_LANE_CAP - 4) / 2 - 1;
     else if (strcmp(lane, "ht") == 0)
-    {
-        return i > 4;
-    }
+        return i > (H_LANE_CAP - 4) / 2 - 1;
     else if (strcmp(lane, "vl") == 0)
-    {
-        return i > 3;
-    }
+        return i > (V_LANE_CAP - 2) / 2 - 1;
     else if (strcmp(lane, "vr") == 0)
-    {
-        return i > 3;
-    }
+        return i > (V_LANE_CAP - 2) / 2 - 1;
     else
     {
         char c[200];
@@ -93,25 +87,24 @@ bool entered_junc_zone(int i, const char *lane)
     }
 }
 
-
 int junc_zone_convert(int i, const char *from_lane, const char *to_lane)
 {
-    if (i == 4 && strcmp(from_lane, "vl") == 0 && strcmp(to_lane, "ht") == 0)
-        return 6;
-    else if (i == 6 && strcmp(from_lane, "ht") == 0 && strcmp(to_lane, "vl") == 0)
-        return 4;
-    else if (i == 5 && strcmp(from_lane, "vr") == 0 && strcmp(to_lane, "ht") == 0)
-        return 7;
-    else if (i == 7 && strcmp(from_lane, "ht") == 0 && strcmp(to_lane, "vr") == 0)
-        return 5;
-    else if (i == 7 && strcmp(from_lane, "hb") == 0 && strcmp(to_lane, "vr") == 0)
-        return 4;
-    else if (i == 4 && strcmp(from_lane, "vr") == 0 && strcmp(to_lane, "hb") == 0)
-        return 7;
-    else if (i == 5 && strcmp(from_lane, "vl") == 0 && strcmp(to_lane, "hb") == 0)
-        return 8;
-    else if (i == 8 && strcmp(from_lane, "hb") == 0 && strcmp(to_lane, "vl") == 0)
-        return 5;
+    if (i == ((V_LANE_CAP - 2) / 2) && strcmp(from_lane, "vl") == 0 && strcmp(to_lane, "ht") == 0)
+        return 1 + ((H_LANE_CAP - 4) / 2);
+    else if (i == 1 + ((H_LANE_CAP - 4) / 2) && strcmp(from_lane, "ht") == 0 && strcmp(to_lane, "vl") == 0)
+        return ((V_LANE_CAP - 2) / 2);
+    else if (i == 1 + ((V_LANE_CAP - 2) / 2) && strcmp(from_lane, "vr") == 0 && strcmp(to_lane, "ht") == 0)
+        return 2 + ((H_LANE_CAP - 4) / 2);
+    else if (i == 2 + ((H_LANE_CAP - 4) / 2) && strcmp(from_lane, "ht") == 0 && strcmp(to_lane, "vr") == 0)
+        return 1 + ((V_LANE_CAP - 2) / 2);
+    else if (i == 1 + ((H_LANE_CAP - 4) / 2) && strcmp(from_lane, "hb") == 0 && strcmp(to_lane, "vr") == 0)
+        return ((V_LANE_CAP - 2) / 2);
+    else if (i == ((V_LANE_CAP - 2) / 2) && strcmp(from_lane, "vr") == 0 && strcmp(to_lane, "hb") == 0)
+        return 1 + ((H_LANE_CAP - 4) / 2);
+    else if (i == 1 + ((V_LANE_CAP - 2) / 2) && strcmp(from_lane, "vl") == 0 && strcmp(to_lane, "hb") == 0)
+        return 2 + ((H_LANE_CAP - 4) / 2);
+    else if (i == 2 + ((H_LANE_CAP - 4) / 2) && strcmp(from_lane, "hb") == 0 && strcmp(to_lane, "vl") == 0)
+        return 1 + ((V_LANE_CAP - 2) / 2);
 
     return -1;
 }
@@ -127,16 +120,16 @@ bool collision(RoadState_t *road_state, int i, char *lane)
 void traffic_step(RoadState_t *road_state)
 {
     int i2;
-    for (int i = 14; i >= 0; i--)
+    for (int i = H_LANE_CAP - 1; i >= 0; i--)
     {
         if (road_state->ht_lane[i])
         {
-            if (i != 14 && !inside_junc_zone(i, "ht") && inside_junc_zone(i + 1, "ht")) // check if we will step into junction in next step
+            if (i != H_LANE_CAP - 1 && !inside_junc_zone(i, "ht") && inside_junc_zone(i + 1, "ht")) // check if we will step into junction in next step
             {
                 if (road_state->ht_lane_light == LIGHT_RED || road_state->ht_lane_light == LIGHT_YELLOW)
                     continue; // traffic controls does not allow this car to step into junction
             }
-            if (i != 14)
+            if (i != H_LANE_CAP - 1)
             {
                 i2 = junc_zone_convert(i + 1, "ht", "vl");
                 if (i2 >= 0 && road_state->vl_lane[i2])    // check if next car position is empty
@@ -150,7 +143,7 @@ void traffic_step(RoadState_t *road_state)
 
             // car can safely move one step
             road_state->ht_lane[i] = 0; // clear old position
-            if (i != 14)
+            if (i != H_LANE_CAP - 1)
                 road_state->ht_lane[i + 1] = 1; // set to next position
             else
                 (*get_passed_traffic())++;

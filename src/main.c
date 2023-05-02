@@ -146,11 +146,11 @@ void vTaskDrawer(void *pvParameters)
     }
 void vTaskvTrafficSensor(void *pvParameters)
 {
-    SENSOR_BODY(v, l, r, 10);
+    SENSOR_BODY(v, l, r, V_LANE_CAP);
 }
 void vTaskhTrafficSensor(void *pvParameters)
 {
-    SENSOR_BODY(h, t, b, 15);
+    SENSOR_BODY(h, t, b, H_LANE_CAP);
 }
 void vTaskTrafficGenerator(void *pvParameters)
 {
@@ -271,12 +271,26 @@ int main(void)
     xTaskCreate(&vTaskhbLightController, "hb Light Controller", 1024, &road_state, 1, &hbControllerHandle);
     xTaskCreate(&vTaskvlLightController, "vl Light Controller", 1024, &road_state, 1, &vlControllerHandle);
     xTaskCreate(&vTaskvrLightController, "vr Light Controller", 1024, &road_state, 1, &vrControllerHandle);
-    // vTaskStartScheduler();
-    road_state.hb_lane[0] = 1;
-    init_drawer();
-    redraw_fully(&road_state);
-    getchar();
+    vTaskStartScheduler();
+    // init_drawer();
+    // nodelay(get_win(), false);
+    // for (int i = 0; i < V_LANE_CAP; i++)
+    // {
+    //     road_state.vl_lane[i] = 1;
+    //     road_state.hb_lane[9] = 1;
+    //     LOG("converted: %d\n", junc_zone_convert(i, "vl", "hb"));
+    //     // road_state.hb_lane[i] = 1;
 
+    //     redraw_fully(&road_state);
+    //     getch();
+    // }
+    // int i = 0;
+    // road_state.hb_lane[i] = 1;
+    // redraw_fully(&road_state);
+    // int x = entered_junc_zone(i, "vl");
+    // LOG("inside: %d\n", x);
+    // redraw_fully(&road_state);
+    // getch();
     endwin();
     return 0;
 }

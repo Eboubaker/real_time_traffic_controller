@@ -32,8 +32,8 @@ SOURCE_FILES += ${FREERTOS_DIR}/Source/portable/ThirdParty/GCC/Posix/port.c
 SOURCE_FILES += ${FREERTOS_DIR}/Source/portable/ThirdParty/GCC/Posix/utils/wait_for_event.c
 SOURCE_FILES += ${FREERTOS_DIR}/Source/stream_buffer.c
 
-CFLAGS := -ggdb3 -O0 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
-LDFLAGS := -ggdb3 -O0 -pthread
+CFLAGS := -ggdb3 -O2 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
+LDFLAGS := -ggdb3 -O2 -pthread
 LDFLAGS += -L"${LIB_PATH}/lib" -lncursesw
 #LDFLAGS += -lncurses
 

@@ -12,7 +12,7 @@
 #define LOG_CAP 100
 #define LOG_MSG_LEN 500
 
-#define WIN_MIN_ROWS 17
+#define WIN_MIN_ROWS V_LANE_CAP + 5
 
 char **pclog;
 int next_log_i;
@@ -37,7 +37,7 @@ void draw_controlls()
 void draw_traffic_passed()
 {
     attrset(COLOR_PAIR(TEXT_COLOR));
-    move(size.ws_row - 7, 0);
+    move(size.ws_row - 5, 0);
     printw("Traffic passed: %d", *get_passed_traffic());
     move(0, 0);
     refresh();
@@ -45,16 +45,16 @@ void draw_traffic_passed()
 void draw_light_timers(RoadState_t *road_state)
 {
     attrset(COLOR_PAIR(TEXT_COLOR));
-    move(size.ws_row - 4, 0);
-#define S_ARGS(x) road_state->x##_lane_red_time_ms / 1000, road_state->x##_lane_green_time_ms / 1000, road_state->x##_lane_yellow_time_ms / 1000
+    move(size.ws_row - 2, 0);
+#define S_ARGS(x) road_state->x##_lane_green_time_ms / 1000, road_state->x##_lane_red_time_ms / 1000, road_state->x##_lane_yellow_time_ms / 1000
     printw("  Horizontal: green: %ds, red: %ds, yellow: %ds", S_ARGS(ht));
     // move(size.ws_row - 4, 0);
     // printw("  Horizontal bottom: green: %ds, red: %ds, yellow: %ds", S_ARGS(hb));
     // move(size.ws_row - 4, 0);
     // printw("  Vertical Left: green: %ds, red: %ds, yellow: %ds", S_ARGS(vl));
-    move(size.ws_row - 5, 0);
+    move(size.ws_row - 3, 0);
     printw("  Vertical: green: %ds, red: %ds, yellow: %ds", S_ARGS(vr));
-    move(size.ws_row - 6, 0);
+    move(size.ws_row - 4, 0);
     addstr("Tweaked Light Timers:");
     refresh();
 }
@@ -170,43 +170,48 @@ void draw_fatal_exit(char *msg)
     exit(-1);
 }
 
+char h_chars[500];
 void draw_lane_lights(RoadState_t *road_state)
 {
+    if (strlen(h_chars) == 0)
+        for (int i = 0; i < H_LANE_CAP - 4; i++)
+            sprintf(h_chars + strlen(h_chars), "%c", '=');
     if (size.ws_row < WIN_MIN_ROWS)
         return;
     // if (lane == 'h')
     // {
     attrset(COLOR_PAIR(road_state->ht_lane_light));
-    move((V_LANE_CAP - 4) / 2, 0);
-    printw("==========");
-    attrset(COLOR_PAIR(NO_LIGHT_LANE_COLOR));
-    move((V_LANE_CAP - 4) / 2, 19);
+    move((V_LANE_CAP - 2) / 2 - 1, 0);
 
-    printw("==========");
-    move(6, 0);
-    printw("==========");
+    printw(h_chars);
+    attrset(COLOR_PAIR(NO_LIGHT_LANE_COLOR));
+    move((V_LANE_CAP - 2) / 2 - 1, 9 + (H_LANE_CAP - 4));
+
+    printw(h_chars);
+    move((V_LANE_CAP - 2) / 2 + 2, 0);
+    printw(h_chars);
     attrset(COLOR_PAIR(road_state->hb_lane_light));
-    move(6, 19);
-    printw("==========");
+    move((V_LANE_CAP - 2) / 2 + 2, 9 + (H_LANE_CAP - 4));
+    printw(h_chars);
     // }
     // else
     // {
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < (V_LANE_CAP - 2) / 2; i++)
     {
         attrset(COLOR_PAIR(road_state->vl_lane_light));
-        move(i, 10);
+        move(i, (H_LANE_CAP - 4));
         printw("||");
         attrset(COLOR_PAIR(NO_LIGHT_LANE_COLOR));
-        move(i, 17);
+        move(i, (H_LANE_CAP - 4) + 7);
         printw("||");
     }
-    for (int i = 6; i < 10; i++)
+    for (int i = (V_LANE_CAP - 2) / 2 + 2; i < V_LANE_CAP; i++)
     {
         attrset(COLOR_PAIR(NO_LIGHT_LANE_COLOR));
-        move(i, 10);
+        move(i, (H_LANE_CAP - 4));
         printw("||");
         attrset(COLOR_PAIR(road_state->vr_lane_light));
-        move(i, 17);
+        move(i, (H_LANE_CAP - 4) + 7);
         printw("||");
     }
     // }
@@ -222,7 +227,7 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
     {
         move(4, 1 + 2 * i);
         printw(" ");
-        if (i != 14)
+        if (i != H_LANE_CAP - 1)
         {
             move(4, 1 + (2 * i) + 2);
             printw(CAR_GLYPH_HT);
@@ -230,11 +235,11 @@ void draw_traffic_jump(RoadState_t *road_state, int i, char *lane)
     }
     else if (strcmp(lane, "hb") == 0)
     {
-        move(5, 2 * (14 - i) + 3);
+        move(5, 2 * (H_LANE_CAP - 1 - i) + 3);
         printw(" ");
-        if (i != 14)
+        if (i != H_LANE_CAP - 1)
         {
-            move(5, (2 * (14 - i - 1)) + 3);
+            move(5, (2 * (H_LANE_CAP - 1 - i - 1)) + 3);
             printw(CAR_GLYPH_HB);
         }
     }
@@ -269,9 +274,9 @@ void draw_traffic(RoadState_t *road_state)
     // int ht_lane[15]; // horizontal left lane
     // int hb_lane[15]; // horizontal right lane
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < V_LANE_CAP; i++)
     {
-        move(i, 13); // vertical left lane
+        move(i, (H_LANE_CAP - 4) + 3); // vertical left lane
         if (road_state->vl_lane[i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
@@ -284,11 +289,11 @@ void draw_traffic(RoadState_t *road_state)
             if (!(ihb >= 0 && road_state->hb_lane[ihb]) && !(iht >= 0 && road_state->ht_lane[iht]))
             {
                 attrset(COLOR_PAIR(ROAD_COLOR));
-                printw(" ");
+                // printw(" ");
             }
         }
-        printw(" ");
-        move(i, 15); // vertical right lane
+        // printw(" ");
+        move(i, (H_LANE_CAP - 4) + 5); // vertical right lane
         if (road_state->vr_lane[V_LANE_CAP - 1 - i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
@@ -301,14 +306,14 @@ void draw_traffic(RoadState_t *road_state)
             if (!(ihb >= 0 && road_state->hb_lane[ihb]) && !(iht >= 0 && road_state->ht_lane[iht]))
             {
                 attrset(COLOR_PAIR(ROAD_COLOR));
-                printw(" ");
+                // printw(" ");
             }
         }
     }
 
-    for (int i = 0; i < 15; i++)
+    for (int i = 0; i < H_LANE_CAP; i++)
     {
-        move(4, 1 + 2 * i); // horizontal top lane
+        move((V_LANE_CAP - 2) / 2, 1 + 2 * i); // horizontal top lane
         if (road_state->ht_lane[i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
@@ -321,11 +326,11 @@ void draw_traffic(RoadState_t *road_state)
             if (!(ivr >= 0 && road_state->vr_lane[ivr]) && !(ivl >= 0 && road_state->vl_lane[ivl]))
             {
                 attrset(COLOR_PAIR(ROAD_COLOR));
-                printw(" ");
+                // printw(" ");
             }
         }
-        move(5, 1 + 2 * i); // horizontal bottom lane
-        if (road_state->hb_lane[14 - i])
+        move((V_LANE_CAP - 2) / 2 + 1, 1 + 2 * i); // horizontal bottom lane
+        if (road_state->hb_lane[H_LANE_CAP - 1 - i])
         {
             attrset(COLOR_PAIR(TRAFFIC_COLOR));
 
@@ -333,13 +338,13 @@ void draw_traffic(RoadState_t *road_state)
         }
         else
         {
-            int ivr = junc_zone_convert(14 - i, "hb", "vr");
-            int ivl = junc_zone_convert(14 - i, "hb", "vl");
+            int ivr = junc_zone_convert(H_LANE_CAP - 1 - i, "hb", "vr");
+            int ivl = junc_zone_convert(H_LANE_CAP - 1 - i, "hb", "vl");
             // LOG("i: %d cont: %d, move: %d %d, ivr: %d, ivl: %d, cond1: %d, cond2: %i\n", i, road_state->hb_lane[i], 5, 1 + 2 * i, ivr, ivl, !(ivr >= 0 && road_state->vr_lane[ivr]), !(ivl >= 0 && road_state->vl_lane[ivl]));
             if (!(ivr >= 0 && road_state->vr_lane[ivr]) && !(ivl >= 0 && road_state->vl_lane[ivl]))
             {
                 attrset(COLOR_PAIR(ROAD_COLOR));
-                printw(" ");
+                // printw(" ");
             }
         }
     }

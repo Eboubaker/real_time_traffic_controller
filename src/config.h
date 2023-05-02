@@ -3,9 +3,13 @@
 
 #include <stdio.h>
 
-#define V_LANE_CAP 10
-#define H_LANE_CAP 15
+#define V_LANE_CELLS 8
+#define H_LANE_CELLS 9
 
+// DO NOT MODIFY, MUST BE MULTIPLE OF 2
+// instead change CELLS
+#define V_LANE_CAP 2 * V_LANE_CELLS
+#define H_LANE_CAP 2 * H_LANE_CELLS
 
 #define LOG(fmt, ...)                                        \
     fprintf(get_log_file(), fmt __VA_OPT__(, ) __VA_ARGS__); \
@@ -27,14 +31,14 @@
 #define DEFAULT_RED_LIGHT_TIME_MS 10000
 #define DEFAULT_YELLOW_LIGHT_TIME_MS 2000
 
-#define DEFAULT_SIMULATION_SPEED 4
+#define DEFAULT_SIMULATION_SPEED 2
 
 #include "ncursesw/ncurses.h"
 
-#define CAR_GLYPH_HT "#"
-#define CAR_GLYPH_HB "#"
-#define CAR_GLYPH_VL "#"
-#define CAR_GLYPH_VR "#"
+#define CAR_GLYPH_HT "👉"
+#define CAR_GLYPH_HB "👈"
+#define CAR_GLYPH_VL "👇"
+#define CAR_GLYPH_VR "👆"
 
 int *get_sim_speed();
 int *get_generated_traffic();
