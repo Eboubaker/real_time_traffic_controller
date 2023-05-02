@@ -41,7 +41,6 @@ TaskHandle_t drawerHandle,
     RoadState_t *road_state = (RoadState_t *)pvParameters;                                     \
     while (1)                                                                                  \
     {                                                                                          \
-        draw_lane_lights(road_state);                                                          \
         if (road_state->l##_lane_light == LIGHT_RED)                                           \
         {                                                                                      \
             vTaskDelay(pdMS_TO_TICKS(road_state->l##_lane_red_time_ms / *get_sim_speed()));    \
