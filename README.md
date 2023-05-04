@@ -1,4 +1,5 @@
 # Real-time Traffic Control Simulation
+![demo gif](demo.gif)
 
 ## Requirements
 ncursesw (wide character support)
