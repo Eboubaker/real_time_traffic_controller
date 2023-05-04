@@ -2,7 +2,7 @@
 ![demo gif](demo.gif)
 
 ## Requirements
-ncursesw (wide character support)
+ncursesw (wide character support) or run ./getDependencies
 ```
 export LIB_PATH=~/.local
 cd ~
