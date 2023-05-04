@@ -1,5 +1,21 @@
 # Real-time Traffic Control Simulation
 
+## Requirements
+ncursesw (wide character support)
+```
+export LIB_PATH=~/.local
+cd ~
+wget https://invisible-island.net/datafiles/release/ncurses.tar.gz
+tar xzf ncurses.tar.gz
+cd $(find . -iname 'ncurses*' -type d | head -n 1)
+./configure --enable-widec --enable-ext-colors --with-default-terminfo=xterm-256color --with-ncursesw --with-shared  --with-cxx-shared --prefix=$LIB_PATH
+make && make install
+```
+## Running
+```
+make
+```
+
 ## Introduction:
 The purpose of this project is to create a real-time traffic control simulation using FreeRTOS in C programming language. The simulation will include 4 traffic lights that control the flow of cars in a + intersection type. The intersection will consist of two lanes for each road, and each lane will have a traffic light. The simulation will allow cars to move forward only if no other car is in front of it, and it will stop due to light control. Cars inside the intersection can only pass if the light is green or yellow. ~~Red/green lights can only be switched on/off if no car is in the intersection~~ (yellow light was added to let them move before any red/green switch happens, to prevent traffic accidents).  
 
