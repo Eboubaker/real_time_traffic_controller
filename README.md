@@ -16,6 +16,8 @@ make && make install
 make
 ```
 
+## Flowchart
+![flowchart diagram](RTS_Light_Controller.drawio.png)
 ## Introduction:
 The purpose of this project is to create a real-time traffic control simulation using FreeRTOS in C programming language. The simulation will include 4 traffic lights that control the flow of cars in a + intersection type. The intersection will consist of two lanes for each road, and each lane will have a traffic light. The simulation will allow cars to move forward only if no other car is in front of it, and it will stop due to light control. Cars inside the intersection can only pass if the light is green or yellow. ~~Red/green lights can only be switched on/off if no car is in the intersection~~ (yellow light was added to let them move before any red/green switch happens, to prevent traffic accidents).  
 
