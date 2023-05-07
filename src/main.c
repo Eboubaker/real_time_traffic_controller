@@ -9,13 +9,13 @@
 #include "task.h"
 #include "stream_buffer.h"
 #include "types.h"
-#include "drawer.h"
+#include "print.h"
 #include "util.h"
 
 // dev
 #include <wchar.h>
 #include <locale.h>
-#include "traffic.h"
+#include "road.h"
 #include <signal.h>
 #include "memory.h"
 #include <pthread.h>
@@ -117,14 +117,14 @@ void vTaskDrawer(void *pvParameters)
     bool sig;                                                               \
     size_t xReceivedBytes, xSentBytes;                                      \
     int want_to_pass;                                                       \
+    int delay_s = 2;                                                        \
+    TickType_t xsleepms = delay_s * 1000;                                   \
+    int frame_time_s = 30;                                                  \
+    int calcs_per_frame = frame_time_s / delay_s;                           \
+    int calc_i = 0;                                                         \
+    int load = 0;                                                           \
     while (1)                                                               \
     {                                                                       \
-        xReceivedBytes = xStreamBufferReceive(s##sensor_signal,             \
-                                              (void *)&sig,                 \
-                                              sizeof(bool),                 \
-                                              portMAX_DELAY);               \
-        if (xReceivedBytes <= 0 || !sig)                                    \
-            continue;                                                       \
         want_to_pass = 0;                                                   \
         for (int i = n - 1; i >= 0; i--)                                    \
         {                                                                   \
@@ -133,15 +133,24 @@ void vTaskDrawer(void *pvParameters)
             if (road_state->s##b##_lane[i] && !entered_junc_zone(i, #s #b)) \
                 want_to_pass++;                                             \
         }                                                                   \
-        xSentBytes = xStreamBufferSend(s##sensor_data,                      \
-                                       (void *)&want_to_pass,               \
-                                       sizeof(int),                         \
-                                       portMAX_DELAY);                      \
-        if (xSentBytes != sizeof(int))                                      \
+        load += want_to_pass;                                               \
+        calc_i++;                                                           \
+        if (calc_i == calcs_per_frame)                                      \
         {                                                                   \
-            LOG("failed to send %s sensor data\n", #s);                     \
-            exit(7);                                                        \
+            calc_i = 0;                                                     \
+            xSentBytes = xStreamBufferSend(s##sensor_data,                  \
+                                           (void *)&load,                   \
+                                           sizeof(int),                     \
+                                           portMAX_DELAY);                  \
+            road_state->s##load = load;                                     \
+            load = 0;                                                       \
+            if (xSentBytes != sizeof(int))                                  \
+            {                                                               \
+                LOG("failed to send %s sensor data\n", #s);                 \
+                exit(7);                                                    \
+            }                                                               \
         }                                                                   \
+        vTaskDelay(xsleepms / *get_sim_speed());                            \
     }
 void vTaskvTrafficSensor(void *pvParameters)
 {
@@ -164,85 +173,54 @@ void vTaskLightTimersTweaker(void *pvParameters)
 {
     RoadState_t *road_state = (RoadState_t *)pvParameters;
     size_t xReceivedBytes, xSentBytes;
-    bool sig = true;
-    int hwaiting, vwaiting;
-    int delay_s = 2;
-    TickType_t xsleepms = delay_s * 1000;
-    int frame_time_s = 30;
-    int calcs_per_frame = frame_time_s / delay_s;
-    int calc_i = 0;
-    int hload = 0, vload = 0;
+    int hload, vload;
     while (1)
     {
-        xSentBytes = xStreamBufferSend(hsensor_signal, (void *)&sig, sizeof(bool), portMAX_DELAY);
-        if (xSentBytes < sizeof(bool))
-        {
-            LOG("h sensor signal not sent\n");
-            exit(7);
-        }
-        xSentBytes = xStreamBufferSend(vsensor_signal, (void *)&sig, sizeof(bool), portMAX_DELAY);
-        if (xSentBytes < sizeof(bool))
-        {
-            LOG("v sensor signal not sent\n");
-            exit(7);
-        }
-        xReceivedBytes = xStreamBufferReceive(hsensor_data, (void *)&hwaiting, sizeof(int), portMAX_DELAY);
+        xReceivedBytes = xStreamBufferReceive(hsensor_data, (void *)&hload, sizeof(int), portMAX_DELAY);
         if (xReceivedBytes < sizeof(int))
         {
             LOG("h sensor data not received\n");
             exit(7);
         }
-        xReceivedBytes = xStreamBufferReceive(vsensor_data, (void *)&vwaiting, sizeof(int), portMAX_DELAY);
+        xReceivedBytes = xStreamBufferReceive(vsensor_data, (void *)&vload, sizeof(int), portMAX_DELAY);
         if (xReceivedBytes < sizeof(int))
         {
             LOG("v sensor data not received\n");
             exit(7);
         }
-        // LOG("hsensor=%d, vsensor=%d\n", hwaiting, vwaiting);
-        hload += hwaiting;
-        vload += vwaiting;
-
-        calc_i++;
-        if (calc_i == calcs_per_frame)
+        LOG("hload=%2d, vload=%2d ==> ", hload, vload);
+        if (hload > vload)
         {
-            calc_i = 0;
-            LOG("hload=%2d, vload=%2d ==> ", hload, vload);
-            if (hload > vload)
+            if (road_state->ht_lane_red_time_ms > 1000)
             {
-                if (road_state->ht_lane_red_time_ms > 1000)
-                {
-                    road_state->ht_lane_green_time_ms += 1000;
-                    road_state->hb_lane_green_time_ms += 1000;
-                    road_state->vl_lane_red_time_ms += 1000;
-                    road_state->vr_lane_red_time_ms += 1000;
+                road_state->ht_lane_green_time_ms += 1000;
+                road_state->hb_lane_green_time_ms += 1000;
+                road_state->vl_lane_red_time_ms += 1000;
+                road_state->vr_lane_red_time_ms += 1000;
 
-                    road_state->ht_lane_red_time_ms -= 1000;
-                    road_state->hb_lane_red_time_ms -= 1000;
-                    road_state->vl_lane_green_time_ms -= 1000;
-                    road_state->vr_lane_green_time_ms -= 1000;
-                    LOG("increasing time for h lane\n");
-                }
+                road_state->ht_lane_red_time_ms -= 1000;
+                road_state->hb_lane_red_time_ms -= 1000;
+                road_state->vl_lane_green_time_ms -= 1000;
+                road_state->vr_lane_green_time_ms -= 1000;
+                LOG("increasing time for h lane\n");
             }
-            else
+        }
+        else
+        {
+            if (road_state->vl_lane_red_time_ms > 1000)
             {
-                if (road_state->vl_lane_red_time_ms > 1000)
-                {
-                    road_state->vl_lane_green_time_ms += 1000;
-                    road_state->vr_lane_green_time_ms += 1000;
-                    road_state->ht_lane_red_time_ms += 1000;
-                    road_state->hb_lane_red_time_ms += 1000;
+                road_state->vl_lane_green_time_ms += 1000;
+                road_state->vr_lane_green_time_ms += 1000;
+                road_state->ht_lane_red_time_ms += 1000;
+                road_state->hb_lane_red_time_ms += 1000;
 
-                    road_state->vl_lane_red_time_ms -= 1000;
-                    road_state->vr_lane_red_time_ms -= 1000;
-                    road_state->ht_lane_green_time_ms -= 1000;
-                    road_state->hb_lane_green_time_ms -= 1000;
-                    LOG("increasing time for v lane\n");
-                }
+                road_state->vl_lane_red_time_ms -= 1000;
+                road_state->vr_lane_red_time_ms -= 1000;
+                road_state->ht_lane_green_time_ms -= 1000;
+                road_state->hb_lane_green_time_ms -= 1000;
+                LOG("increasing time for v lane\n");
             }
-            hload = 0;
-            vload = 0;
-        };
-        vTaskDelay(pdMS_TO_TICKS(xsleepms / *get_sim_speed()));
+        }
     }
 }
 

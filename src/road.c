@@ -2,13 +2,13 @@
 #include "stdlib.h"
 
 #include "util.h"
-#include "traffic.h"
+#include "road.h"
 #include "string.h"
-#include "drawer.h"
+#include "print.h"
 #include "config.h"
 
-float htraffic = .25;
-float vtraffic = .25;
+float htraffic = DEFAULT_H_LOAD;
+float vtraffic = DEFAULT_V_LOAD;
 
 float *get_htraffic()
 {

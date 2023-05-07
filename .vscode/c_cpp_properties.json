@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${FREERTOS_PATH}/FreeRTOS/Source/include",
-                "${FREERTOS_PATH}/FreeRTOS/Source/portable/ThirdParty/GCC/Posix"
+                "${FREERTOS_PATH}/FreeRTOS/Source/portable/ThirdParty/GCC/Posix",
+                "~/.local/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

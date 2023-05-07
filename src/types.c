@@ -23,5 +23,8 @@ void init_road_state(RoadState_t *road_state)
     road_state->vr_lane_red_time_ms = DEFAULT_RED_LIGHT_TIME_MS;
     road_state->vr_lane_green_time_ms = DEFAULT_GREEN_LIGHT_TIME_MS;
     road_state->vr_lane_yellow_time_ms = DEFAULT_YELLOW_LIGHT_TIME_MS;
+
+    road_state->vload = 0;
+    road_state->hload = 0;
     generate_traffic(road_state);
 }

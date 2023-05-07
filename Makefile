@@ -3,7 +3,6 @@
 
 CC := gcc
 BIN := task
-NCURSES_LIB_PATH := ${HOME}/.local
 
 BUILD_DIR := build
 
@@ -17,7 +16,6 @@ INCLUDE_DIRS := -I./include
 INCLUDE_DIRS += -I${FREERTOS_DIR}/Source/include
 INCLUDE_DIRS += -I${FREERTOS_DIR}/Source/portable/ThirdParty/GCC/Posix
 INCLUDE_DIRS += -I${FREERTOS_DIR}/Source/
-INCLUDE_DIRS += -I"$(LIB_PATH)/include"
 
 SOURCE_FILES := $(wildcard ./src/*.c)
 SOURCE_FILES += ${FREERTOS_DIR}/Source/tasks.c
@@ -34,7 +32,7 @@ SOURCE_FILES += ${FREERTOS_DIR}/Source/stream_buffer.c
 
 CFLAGS := -ggdb3 -O2 -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter
 LDFLAGS := -ggdb3 -O2 -pthread
-LDFLAGS += -L"$(NCURSES_LIB_PATH)/lib" -lncursesw
+LDFLAGS += -lncursesw
 #LDFLAGS += -lncurses
 
 OBJ_FILES = $(SOURCE_FILES:%.c=$(BUILD_DIR)/%.o)

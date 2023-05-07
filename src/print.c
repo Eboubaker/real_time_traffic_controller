@@ -1,9 +1,9 @@
-#include "drawer.h"
+#include "print.h"
 #include "types.h"
 #include <locale.h>
 #include <stdlib.h>
 #include "config.h"
-#include "traffic.h"
+#include "road.h"
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <string.h>
@@ -12,7 +12,7 @@
 #define LOG_CAP 100
 #define LOG_MSG_LEN 500
 
-#define WIN_MIN_ROWS V_LANE_CAP + 5
+#define WIN_MIN_ROWS 7
 
 char **pclog;
 int next_log_i;
@@ -62,18 +62,10 @@ void draw_light_timers(RoadState_t *road_state)
 void fresh_screen(RoadState_t *road_state)
 {
     clear();
-    if (size.ws_row < WIN_MIN_ROWS)
-    {
-        move(0, 0);
-        attrset(COLOR_PAIR(TEXT_COLOR));
-        printw("SMALL WINDOW HEIGHT, RESIZE IT");
-        refresh();
-        return;
-    }
-    draw_light_timers(road_state);
-    draw_traffic_passed();
-    draw_controlls();
-    draw_logs();
+    // draw_light_timers(road_state);
+    // draw_traffic_passed();
+    // draw_controlls();
+    // draw_logs();
 }
 
 void init_drawer()
@@ -140,18 +132,38 @@ void on_window_resize(RoadState_t *road_state)
 
 void redraw_fully(RoadState_t *road_state)
 {
-    if (size.ws_row < WIN_MIN_ROWS)
-    {
-        clear();
-        move(0, 0);
-        attrset(COLOR_PAIR(TEXT_COLOR));
-        printw("WINDOW HEIGHT TOO SMALL (%d<%d), PLEASE RESIZE", size.ws_row, WIN_MIN_ROWS);
-        refresh();
-        return;
-    }
     fresh_screen(road_state);
-    draw_lane_lights(road_state);
-    draw_traffic(road_state);
+    // move(0, 0);
+    move(0, 0);
+    printw("H traffic load: %d", road_state->hload);
+    move(1, 0);
+    printw("V traffic load: %d", road_state->vload);
+    move(2, 0);
+    printw("Vertical Light timers: %d green, %d red", road_state->vl_lane_green_time_ms / 1000, road_state->vl_lane_red_time_ms / 1000);
+    move(3, 0);
+    printw("Horizontal Light timers: %d green, %d red", road_state->ht_lane_green_time_ms / 1000, road_state->ht_lane_red_time_ms / 1000);
+    char l[50];
+    if (road_state->hb_lane_light == LIGHT_GREEN)
+        sprintf(l, "green");
+    else if (road_state->hb_lane_light == LIGHT_RED)
+        sprintf(l, "red");
+    else if (road_state->hb_lane_light == LIGHT_YELLOW)
+        sprintf(l, "yellow");
+    move(4, 0);
+    printw("Vertical Light: %s", l);
+    if (road_state->vl_lane_light == LIGHT_GREEN)
+        sprintf(l, "green");
+    else if (road_state->vl_lane_light == LIGHT_RED)
+        sprintf(l, "red");
+    else if (road_state->vl_lane_light == LIGHT_YELLOW)
+        sprintf(l, "yellow");
+    move(5, 0);
+    printw("Horizontal Light: %s", l);
+    move(6, 0);
+    printw("Cars passed: %d", *get_passed_traffic());
+
+    //  draw_lane_lights(road_state);
+    //  draw_traffic(road_state);
     refresh();
 }
 

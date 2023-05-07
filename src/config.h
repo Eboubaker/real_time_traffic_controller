@@ -3,11 +3,13 @@
 
 #include <stdio.h>
 
+#define DEFAULT_H_LOAD .60
+#define DEFAULT_V_LOAD .25
+
+
 #define V_LANE_CELLS 8
 #define H_LANE_CELLS 8
 
-// DO NOT MODIFY, MUST BE MULTIPLE OF 2
-// instead change CELLS
 #define V_LANE_CAP 2 * V_LANE_CELLS
 #define H_LANE_CAP 2 * H_LANE_CELLS
 
@@ -27,18 +29,18 @@
 #define LIGHT_YELLOW 2
 #define LIGHT_GREEN 1
 
-#define DEFAULT_GREEN_LIGHT_TIME_MS 8000
+#define DEFAULT_GREEN_LIGHT_TIME_MS 10000
 #define DEFAULT_RED_LIGHT_TIME_MS 10000
-#define DEFAULT_YELLOW_LIGHT_TIME_MS 2000
+#define DEFAULT_YELLOW_LIGHT_TIME_MS 0
 
-#define DEFAULT_SIMULATION_SPEED 2
+#define DEFAULT_SIMULATION_SPEED 4
 
 #include "ncursesw/ncurses.h"
 
-#define CAR_GLYPH_HT "👉"
-#define CAR_GLYPH_HB "👈"
-#define CAR_GLYPH_VL "👇"
-#define CAR_GLYPH_VR "👆"
+#define CAR_GLYPH_HT "#"
+#define CAR_GLYPH_HB "#"
+#define CAR_GLYPH_VL "#"
+#define CAR_GLYPH_VR "#"
 
 int *get_sim_speed();
 int *get_generated_traffic();

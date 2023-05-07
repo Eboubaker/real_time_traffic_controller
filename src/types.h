@@ -38,6 +38,9 @@ typedef struct
     int vr_lane_red_time_ms;
     int vr_lane_green_time_ms;
     int vr_lane_yellow_time_ms;
+
+    int vload;
+    int hload;
 } RoadState_t;
 void init_road_state(RoadState_t *road_state);
 #endif // TYPES_H

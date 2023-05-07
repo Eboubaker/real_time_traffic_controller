@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "config.h"
-#include "traffic.h"
+#include "road.h"
 #include "string.h"
 
 int generated_traffic;
